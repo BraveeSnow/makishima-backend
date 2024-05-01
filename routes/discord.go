@@ -6,6 +6,7 @@ import (
 	"io"
 	"makishima-backend/types"
 	"makishima-backend/types/database"
+	"makishima-backend/util"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm/clause"
 )
 
@@ -49,29 +49,6 @@ func identifyDiscordUser(token *string) (*types.DiscordIdentity, error) {
 	return identity, nil
 }
 
-func createToken(identity *types.DiscordIdentity, expiry int64) (string, error) {
-	currentTime := time.Now().Unix()
-
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"iat": currentTime,
-		"exp": currentTime + expiry,
-		"id":  identity.Id,
-	}).SignedString([]byte(os.Getenv("MAKISHIMA_SIGKEY")))
-}
-
-func decodeToken(token *string) (*types.DiscordJwtClaims, error) {
-	claims := types.DiscordJwtClaims{}
-	_, err := jwt.ParseWithClaims(*token, &claims, func(t *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("MAKISHIMA_SIGKEY")), nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("token is invalid - %s", err.Error())
-	}
-
-	return &claims, nil
-}
-
 func DiscordVerify(data *types.MakishimaData) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		cookie, err := ctx.Cookie("identity")
@@ -85,7 +62,7 @@ func DiscordVerify(data *types.MakishimaData) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := decodeToken(&cookie)
+		claims, err := util.DecodeToken(&cookie)
 		if err != nil {
 			data.Logger.Warn().Msg(err.Error())
 			ctx.SetCookie("identity", "", -1, "/", "localhost", true, true)
@@ -98,7 +75,7 @@ func DiscordVerify(data *types.MakishimaData) gin.HandlerFunc {
 		data.Logger.Debug().Msg("validation OK")
 
 		userEntry := database.User{}
-		data.Database.Find(&userEntry, claims.Id)
+		data.Database.Find(&userEntry, claims.DiscordId)
 		ctx.JSON(http.StatusOK, gin.H{
 			"username": userEntry.Username,
 		})
@@ -141,7 +118,7 @@ func DiscordOAuthRedirect(data *types.MakishimaData) gin.HandlerFunc {
 		if err != nil {
 			data.Logger.Error().Msgf("Discord OAuth code exchange failed - %s", err.Error())
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "invalid code",
+				"error": "unknown",
 			})
 			return
 		}
@@ -149,7 +126,7 @@ func DiscordOAuthRedirect(data *types.MakishimaData) gin.HandlerFunc {
 		// parse oauth token response
 		jsonBytes, err := io.ReadAll(tokenResponse.Body)
 		if err != nil {
-			data.Logger.Error().Msg("Unable to parse token response body")
+			data.Logger.Error().Msg("Unable to read token response body")
 			ctx.JSON(http.StatusInternalServerError, gin.H{
 				"error": "unknown",
 			})
@@ -209,7 +186,7 @@ func DiscordOAuthRedirect(data *types.MakishimaData) gin.HandlerFunc {
 		data.Logger.Info().Msgf("inserted into the users table - %d row(s) affected", dbResult.RowsAffected)
 
 		// send back a cookie containing signed jwt
-		jwt, err := createToken(identity, tokenDeserialized.ExpiresIn)
+		jwt, err := util.CreateToken(identity, tokenDeserialized.ExpiresIn)
 		if err != nil {
 			data.Logger.Error().Msgf("unable to craft JWT - %s", err.Error())
 			ctx.JSON(http.StatusInternalServerError, gin.H{

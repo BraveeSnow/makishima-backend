@@ -9,7 +9,7 @@ type DiscordIdentity struct {
 
 type DiscordJwtClaims struct {
 	jwt.RegisteredClaims
-	Id string `json:"id"`
+	DiscordId string `json:"id"`
 }
 
 type DiscordTokenResponse struct {

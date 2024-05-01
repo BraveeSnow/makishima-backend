@@ -29,6 +29,11 @@ func assertEnvironExists() {
 	environCheck("MAKISHIMA_REDIRECT")
 	environCheck("MAKISHIMA_SIGKEY")
 
+	// anilist related secrets
+	environCheck("ANILIST_ID")
+	environCheck("ANILIST_SECRET")
+	environCheck("ANILIST_REDIRECT")
+
 	// database related checks
 	environCheck("DATABASE_URI")
 }
@@ -38,8 +43,7 @@ func main() {
 	assertEnvironExists()
 
 	logger := zerolog.New(zerolog.NewConsoleWriter()).With().Timestamp().Logger()
-	dsn := sqlite.Open(os.Getenv("DATABASE_URI"))
-	db, err := gorm.Open(dsn, &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(os.Getenv("DATABASE_URI")), &gorm.Config{})
 
 	if err != nil {
 		logger.Fatal().Msgf("unable to connect to database: %s", err.Error())
@@ -64,6 +68,7 @@ func main() {
 	// OAuth redirect endpoints
 	redirects := router.Group("/redirect")
 	redirects.GET("/discord", routes.DiscordOAuthRedirect(&data))
+	redirects.GET("/anilist", routes.AnilistOAuthRedirect(&data))
 
 	router.Run("0.0.0.0:3000")
 }
