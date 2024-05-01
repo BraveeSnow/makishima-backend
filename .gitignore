@@ -1,0 +1,9 @@
+# sensitive files
+.env
+*.db
+
+# junk
+tmp/
+
+# developer stuff
+.vscode/
