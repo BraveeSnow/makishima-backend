@@ -6,7 +6,7 @@ CREATE TABLE "users" (
     "token_expiry"  INTEGER NOT NULL,
 
     CONSTRAINT "User_PK" PRIMARY KEY("id")
-)
+);
 
 CREATE TABLE "anilist_users" (
     "id"            INTEGER,
@@ -17,4 +17,4 @@ CREATE TABLE "anilist_users" (
 
     CONSTRAINT "AnilistUser_PK" PRIMARY KEY("id"),
     CONSTRAINT "User_FK"        FOREIGN KEY("user_id") REFERENCES "users"("id")
-)
+);
