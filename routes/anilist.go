@@ -183,7 +183,7 @@ func AnilistOAuthRedirect(data *types.MakishimaData) gin.HandlerFunc {
 			UserID:       claims.DiscordId,
 		}
 		dbResult := data.Database.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "id"}},
+			Columns:   []clause.Column{{Name: "user_id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"access_token", "refresh_token", "token_expiry"}),
 		}).Create(&anilistEntry)
 
