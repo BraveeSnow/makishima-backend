@@ -3,6 +3,9 @@ spring:
     name: makishima
   config:
     import: file:.env[.properties]
+  datasource:
+    url: ${DB_URI}
+    driverClassName: ${DB_DRIVER}
   security:
     oauth2:
       client:

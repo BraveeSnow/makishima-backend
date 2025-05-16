@@ -1,7 +1,7 @@
 package ca.codeglacier.makishima.auth;
 
-import ca.codeglacier.makishima.model.DiscordUser;
-import jakarta.servlet.ServletException;
+import ca.codeglacier.makishima.entity.DiscordUser;
+import ca.codeglacier.makishima.service.DiscordUserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -15,7 +15,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.sql.Date;
+import java.util.Date;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -25,23 +25,25 @@ public class DiscordLoginSuccessHandler implements AuthenticationSuccessHandler 
     private static final Logger logger = LoggerFactory.getLogger(DiscordLoginSuccessHandler.class);
 
     private final OAuth2AuthorizedClientService clientService;
+    private final DiscordUserService discordUserService;
 
-    public DiscordLoginSuccessHandler(OAuth2AuthorizedClientService clientService) {
+    public DiscordLoginSuccessHandler(OAuth2AuthorizedClientService clientService, DiscordUserService discordUserService) {
         this.clientService = clientService;
+        this.discordUserService = discordUserService;
     }
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
         OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
         OAuth2User user = token.getPrincipal();
         OAuth2AuthorizedClient authorizedClient = clientService.loadAuthorizedClient(token.getAuthorizedClientRegistrationId(), user.getName());
 
         try {
-            DiscordUser userRecord = new DiscordUser(
-                    Optional.ofNullable(user.<Long>getAttribute("id")).orElseThrow(),
+            discordUserService.save(new DiscordUser(
+                    Long.parseLong(Optional.ofNullable(user.getAttribute("id")).orElseThrow().toString()),
                     authorizedClient.getAccessToken().getTokenValue(),
                     Optional.ofNullable(authorizedClient.getRefreshToken()).orElseThrow().getTokenValue(),
-                    new Date(0));
+                    Date.from(Optional.ofNullable(authorizedClient.getAccessToken().getExpiresAt()).orElseThrow())));
         } catch (NoSuchElementException e) {
             logger.warn(e.getMessage());
         }

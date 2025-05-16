@@ -1,4 +1,4 @@
-package ca.codeglacier.makishima.security;
+package ca.codeglacier.makishima.config;
 
 import ca.codeglacier.makishima.auth.DiscordLoginSuccessHandler;
 import org.springframework.context.annotation.Bean;
